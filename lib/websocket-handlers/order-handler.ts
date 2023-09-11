@@ -40,4 +40,6 @@ export async function handler(event: any) {
     );
     console.log(`postToConnection response ${JSON.stringify(response)}`);
   }
+
+  return { statusCode: 200 };
 }

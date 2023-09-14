@@ -25,7 +25,8 @@ export class WebsocketApiStack extends Stack {
     super(scope, id, props);
 
     const connectionsTbl = new Table(this, 'ConnectionsTbl', {
-      partitionKey: { name: 'connectionId', type: AttributeType.STRING },
+      partitionKey: { name: 'restaurantId', type: AttributeType.STRING },
+      sortKey: { name: 'connectionId', type: AttributeType.STRING },
       readCapacity: 2,
       writeCapacity: 1,
       timeToLiveAttribute: 'ttl',
@@ -44,6 +45,16 @@ export class WebsocketApiStack extends Stack {
         CONNECTIONS_TBL: connectionsTbl.tableName,
       },
     });
+
+    connectFn.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['cognito-idp:GetUser'],
+        resources: [
+          `arn:aws:cognito-idp:${Aws.REGION}:${Aws.ACCOUNT_ID}:userpool/RestaurantAdminPool`,
+        ],
+      }),
+    );
 
     const disconnectFn = new NodejsFunction(this, 'DisconnectFn', {
       ...commonFnProps,
@@ -73,6 +84,7 @@ export class WebsocketApiStack extends Stack {
       },
     });
 
+    // Policy for API Gateway WebSocket
     orderHandlerFn.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -80,6 +92,15 @@ export class WebsocketApiStack extends Stack {
         resources: [
           `arn:aws:execute-api:${Aws.REGION}:${Aws.ACCOUNT_ID}:${websocketApi.api.ref}/*`,
         ],
+      }),
+    );
+
+    // Policy for DynamoDB
+    orderHandlerFn.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['dynamodb:DeleteItem'],
+        resources: [connectionsTbl.tableArn],
       }),
     );
 
